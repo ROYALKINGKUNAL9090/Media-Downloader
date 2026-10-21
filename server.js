@@ -76,7 +76,9 @@ app.post("/api/info", rateLimit(20), (req, res) => {
   p.on("close", (code) => {
     clearTimeout(timer);
     if (code !== 0) {
-      return res.status(422).json({ error: "Could not read this link. It may be private or unsupported." });
+      console.error("yt-dlp error:", err);
+      const reason = err.trim().split("\n").pop() || "unknown";
+      return res.status(422).json({ error: "Reason: " + reason });
     }
     try {
       const j = JSON.parse(out);
