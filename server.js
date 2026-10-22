@@ -62,6 +62,18 @@ function cleanup(dir) {
   fs.rm(dir, { recursive: true, force: true }, () => {});
 }
 
+// run a command and collect output
+function run(cmd, args, cb) {
+  const p = spawn(cmd, args);
+  let out = "";
+  let err = "";
+  p.stdout.on("data", (d) => (out += d));
+  p.stderr.on("data", (d) => (err += d));
+  p.on("error", (e) => cb(e, out, err));
+  p.on("close", (code) => cb(code === 0 ? null : new Error("exit " + code), out, err));
+  return p;
+}
+
 // ---------- routes ----------
 
 // Get title, thumbnail, duration
@@ -102,7 +114,7 @@ app.post("/api/info", rateLimit(20), (req, res) => {
   });
 });
 
-// Download to a temp folder (so video + audio can be merged), then send the file
+// Download to a temp folder, fix the audio, then send the file
 app.get("/api/download", rateLimit(10), (req, res) => {
   const url = validateUrl(req.query.url);
   const type = req.query.type === "audio" ? "audio" : "video";
@@ -111,7 +123,7 @@ app.get("/api/download", rateLimit(10), (req, res) => {
 
   const dir = path.join(os.tmpdir(), "dl-" + crypto.randomBytes(8).toString("hex"));
   fs.mkdirSync(dir, { recursive: true });
-  const outTemplate = path.join(dir, "file.%(ext)s");
+  const outTemplate = path.join(dir, "raw.%(ext)s");
 
   let args;
   let ext;
@@ -125,10 +137,11 @@ app.get("/api/download", rateLimit(10), (req, res) => {
     ext = "mp3";
     mime = "audio/mpeg";
   } else {
-    // best video + best audio, merged into one mp4 by ffmpeg
+    // best video + best audio, prefer h264 + aac (plays everywhere), up to 1080p
     args = [
       "--no-playlist",
-      "-f", "bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b",
+      "-f", "bv*+ba/b",
+      "-S", "res:1080,vcodec:h264,acodec:aac",
       "--merge-output-format", "mp4",
       "-o", outTemplate, "--", url,
     ];
@@ -149,33 +162,68 @@ app.get("/api/download", rateLimit(10), (req, res) => {
     }
   });
 
+  function fail(msg) {
+    cleanup(dir);
+    if (!res.headersSent) res.status(500).send(msg);
+  }
+
+  function send(file) {
+    res.setHeader("Content-Type", mime);
+    res.setHeader("Content-Disposition", `attachment; filename="${title}.${ext}"`);
+    res.setHeader("Content-Length", fs.statSync(file).size);
+    const stream = fs.createReadStream(file);
+    stream.pipe(res);
+    const done = () => cleanup(dir);
+    stream.on("close", done);
+    res.on("close", done);
+  }
+
   p.on("error", () => {
     clearTimeout(timer);
-    cleanup(dir);
-    if (!res.headersSent) res.status(500).send("yt-dlp is not installed on the server.");
+    fail("yt-dlp is not installed on the server.");
   });
 
   p.on("close", (code) => {
     clearTimeout(timer);
     if (aborted) return cleanup(dir);
 
-    const file = path.join(dir, "file." + ext);
-    if (code !== 0 || !fs.existsSync(file)) {
+    const raw = path.join(dir, "raw." + ext);
+    if (code !== 0 || !fs.existsSync(raw)) {
       console.error("download error:", err);
-      cleanup(dir);
       const reason = err.trim().split("\n").pop() || "unknown";
-      return res.status(500).send("Download failed. Reason: " + reason);
+      return fail("Download failed. Reason: " + reason);
     }
 
-    res.setHeader("Content-Type", mime);
-    res.setHeader("Content-Disposition", `attachment; filename="${title}.${ext}"`);
-    res.setHeader("Content-Length", fs.statSync(file).size);
+    if (type === "audio") return send(raw);
 
-    const stream = fs.createReadStream(file);
-    stream.pipe(res);
-    const done = () => cleanup(dir);
-    stream.on("close", done);
-    res.on("close", done);
+    // Video: make sure the audio is AAC (works on every phone / tablet player)
+    const fixed = path.join(dir, "fixed.mp4");
+    run(
+      "ffmpeg",
+      [
+        "-y", "-i", raw,
+        "-map", "0:v:0?", "-map", "0:a:0?",
+        "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+        "-movflags", "+faststart",
+        fixed,
+      ],
+      (e, _o, ffErr) => {
+        if (aborted) return cleanup(dir);
+        if (e || !fs.existsSync(fixed)) {
+          console.error("ffmpeg error:", ffErr);
+          return send(raw); // fall back to the original file
+        }
+        // log whether the final file really has audio
+        run(
+          "ffprobe",
+          ["-v", "error", "-select_streams", "a", "-show_entries", "stream=codec_name", "-of", "csv=p=0", fixed],
+          (_e2, probeOut) => {
+            console.log("audio streams in final file:", probeOut.trim() || "NONE");
+            send(fixed);
+          }
+        );
+      }
+    );
   });
 });
 
