@@ -1,6 +1,9 @@
 const express = require("express");
 const { spawn } = require("child_process");
 const path = require("path");
+const fs = require("fs");
+const os = require("os");
+const crypto = require("crypto");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -55,6 +58,10 @@ function safeName(s) {
   return (s || "download").replace(/[^\w\-. ]+/g, "").trim().slice(0, 80) || "download";
 }
 
+function cleanup(dir) {
+  fs.rm(dir, { recursive: true, force: true }, () => {});
+}
+
 // ---------- routes ----------
 
 // Get title, thumbnail, duration
@@ -95,38 +102,81 @@ app.post("/api/info", rateLimit(20), (req, res) => {
   });
 });
 
-// Stream the file to the browser
+// Download to a temp folder (so video + audio can be merged), then send the file
 app.get("/api/download", rateLimit(10), (req, res) => {
   const url = validateUrl(req.query.url);
   const type = req.query.type === "audio" ? "audio" : "video";
   const title = safeName(req.query.title);
   if (!url) return res.status(400).send("Invalid link.");
 
+  const dir = path.join(os.tmpdir(), "dl-" + crypto.randomBytes(8).toString("hex"));
+  fs.mkdirSync(dir, { recursive: true });
+  const outTemplate = path.join(dir, "file.%(ext)s");
+
   let args;
+  let ext;
+  let mime;
   if (type === "audio") {
-    args = ["--no-playlist", "-f", "bestaudio", "-x", "--audio-format", "mp3", "--audio-quality", "0", "-o", "-", "--", url];
-    res.setHeader("Content-Type", "audio/mpeg");
-    res.setHeader("Content-Disposition", `attachment; filename="${title}.mp3"`);
+    args = [
+      "--no-playlist", "-f", "bestaudio/best",
+      "-x", "--audio-format", "mp3", "--audio-quality", "0",
+      "-o", outTemplate, "--", url,
+    ];
+    ext = "mp3";
+    mime = "audio/mpeg";
   } else {
-    // single progressive mp4 so it can be streamed
-    args = ["--no-playlist", "-f", "best[ext=mp4]/best", "-o", "-", "--", url];
-    res.setHeader("Content-Type", "video/mp4");
-    res.setHeader("Content-Disposition", `attachment; filename="${title}.mp4"`);
+    // best video + best audio, merged into one mp4 by ffmpeg
+    args = [
+      "--no-playlist",
+      "-f", "bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b",
+      "--merge-output-format", "mp4",
+      "-o", outTemplate, "--", url,
+    ];
+    ext = "mp4";
+    mime = "video/mp4";
   }
 
   const p = spawn("yt-dlp", args);
+  let err = "";
+  p.stderr.on("data", (d) => (err += d));
   const timer = setTimeout(() => p.kill("SIGKILL"), 10 * 60_000);
 
-  p.stdout.pipe(res);
+  let aborted = false;
+  req.on("close", () => {
+    if (!res.writableEnded) {
+      aborted = true;
+      p.kill("SIGKILL");
+    }
+  });
+
   p.on("error", () => {
     clearTimeout(timer);
+    cleanup(dir);
     if (!res.headersSent) res.status(500).send("yt-dlp is not installed on the server.");
   });
-  p.on("close", () => {
+
+  p.on("close", (code) => {
     clearTimeout(timer);
-    res.end();
+    if (aborted) return cleanup(dir);
+
+    const file = path.join(dir, "file." + ext);
+    if (code !== 0 || !fs.existsSync(file)) {
+      console.error("download error:", err);
+      cleanup(dir);
+      const reason = err.trim().split("\n").pop() || "unknown";
+      return res.status(500).send("Download failed. Reason: " + reason);
+    }
+
+    res.setHeader("Content-Type", mime);
+    res.setHeader("Content-Disposition", `attachment; filename="${title}.${ext}"`);
+    res.setHeader("Content-Length", fs.statSync(file).size);
+
+    const stream = fs.createReadStream(file);
+    stream.pipe(res);
+    const done = () => cleanup(dir);
+    stream.on("close", done);
+    res.on("close", done);
   });
-  req.on("close", () => p.kill("SIGKILL"));
 });
 
 app.listen(PORT, () => {
