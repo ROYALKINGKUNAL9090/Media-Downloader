@@ -142,7 +142,7 @@ app.post("/api/info", rateLimit(20), (req, res) => {
   const url = validateUrl(req.body && req.body.url);
   if (!url) return res.status(400).json({ error: "Please enter a valid link." });
 
-  const p = spawn("yt dlp", ["--extractor-args", "youtube:player_client=tv", "--no-playlist", "--dump-single-json", "--no-warnings", "--", url]);
+  const p = spawn("yt-dlp", ["--extractor-args", "youtube:player_client=tv", "--no-playlist", "--dump-single-json", "--no-warnings", "--", url]);
   let out = "";
   let err = "";
   const timer = setTimeout(() => p.kill("SIGKILL"), 30_000);
