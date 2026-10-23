@@ -112,11 +112,15 @@ async function findPageImage(pageUrl) {
   });
   if (!r.ok) return null;
   const html = (await r.text()).slice(0, 600_000);
-  const match = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
-  const image = match ? decodeHtml(match[1]) : null;
+  const meta = (prop) => {
+    const a = html.match(new RegExp('<meta[^>]+property=["\']' + prop + '["\'][^>]+content=["\']([^"\']+)["\']', "i"));
+    const b = html.match(new RegExp('<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']' + prop + '["\']', "i"));
+    const m = a || b;
+    return m ? decodeHtml(m[1]) : null;
+  };
+  const image = meta("og:image");
   if (!image) return null;
-  const titleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
-  return { image, title: titleMatch ? decodeHtml(titleMatch[1]) : "Image" };
+  return { image, title: meta("og:title") || "Image" };
 }
 
 // download an image into memory (only real images, max 20 MB)
@@ -142,7 +146,7 @@ app.post("/api/info", rateLimit(20), (req, res) => {
   const url = validateUrl(req.body && req.body.url);
   if (!url) return res.status(400).json({ error: "Please enter a valid link." });
 
-  const p = spawn("yt-dlp", ["--extractor-args", "youtube:player_client=tv", "--no-playlist", "--dump-single-json", "--no-warnings", "--", url]);
+  const p = spawn("yt-dlp", ["--no-playlist", "--dump-single-json", "--no-warnings", "--", url]);
   let out = "";
   let err = "";
   const timer = setTimeout(() => p.kill("SIGKILL"), 30_000);
