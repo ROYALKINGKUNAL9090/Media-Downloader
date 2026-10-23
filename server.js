@@ -163,7 +163,7 @@ app.post("/api/info", rateLimit(20), (req, res) => {
       // Not for YouTube, and not when the real problem is a login / bot block.
       const host = new URL(url).hostname;
       const isYouTube = /youtube\.com|youtu\.be/i.test(host);
-      const blocked = /sign in|not a bot|login required|cookies|rate-limit|no video formats found/i.test(err);
+      const blocked = /sign in|not a bot|login required|cookies|rate-limit/i.test(err);
       if (!isYouTube && !blocked) {
         try {
           const page = await findPageImage(url);
