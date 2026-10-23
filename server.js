@@ -112,15 +112,11 @@ async function findPageImage(pageUrl) {
   });
   if (!r.ok) return null;
   const html = (await r.text()).slice(0, 600_000);
-  const meta = (prop) => {
-    const a = html.match(new RegExp('<meta[^>]+property=["\']' + prop + '["\'][^>]+content=["\']([^"\']+)["\']', "i"));
-    const b = html.match(new RegExp('<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']' + prop + '["\']', "i"));
-    const m = a || b;
-    return m ? decodeHtml(m[1]) : null;
-  };
-  const image = meta("og:image");
+  const match = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+  const image = match ? decodeHtml(match[1]) : null;
   if (!image) return null;
-  return { image, title: meta("og:title") || "Image" };
+  const titleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+  return { image, title: titleMatch ? decodeHtml(titleMatch[1]) : "Image" };
 }
 
 // download an image into memory (only real images, max 20 MB)
