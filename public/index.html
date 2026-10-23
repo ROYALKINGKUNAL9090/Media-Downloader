@@ -42,26 +42,28 @@
   #result img { width: 100%; border-radius: 12px; display: block; }
   #title { font-weight: 600; margin: 12px 0 2px; }
   #meta { color: var(--muted); font-size: .9rem; margin-bottom: 14px; }
-  .actions { display: flex; gap: 8px; }
-  .actions a {
-    flex: 1; text-align: center; text-decoration: none; padding: 14px; border-radius: 10px;
-    font-weight: 600; color: #fff;
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .actions a, .actions button {
+    flex: 1 1 140px; text-align: center; text-decoration: none; padding: 14px; border-radius: 10px;
+    font-weight: 600; color: #fff; font-size: 1rem;
   }
   .video { background: var(--accent); }
   .audio { background: #00a8a3; }
+  .image { background: #e17f2d; }
+  #note { color: var(--muted); font-size: .85rem; margin-top: 12px; display: none; }
   footer { color: var(--muted); font-size: .8rem; text-align: center; margin: 32px 0; max-width: 560px; }
 </style>
 </head>
 <body>
   <header>
     <h1>SaveAnyClip</h1>
-    <p>Paste a link. Get the video or the audio.</p>
+    <p>Paste a link. Get the video, audio or image.</p>
   </header>
 
   <main>
     <div class="card">
       <form id="form" class="row">
-        <input id="url" type="url" placeholder="Paste a video link here..." required>
+        <input id="url" type="url" placeholder="Paste a video or post link here..." required>
         <button id="go" type="submit">Fetch</button>
       </form>
       <div class="platforms">
@@ -79,7 +81,9 @@
         <div class="actions">
           <a id="dlVideo" class="video" href="#">Download Video (MP4)</a>
           <a id="dlAudio" class="audio" href="#">Download Audio (MP3)</a>
+          <button id="dlImage" class="image" type="button">Download Image</button>
         </div>
+        <div id="note">Video downloads can take up to a minute to start. Please wait and do not tap again.</div>
       </div>
     </div>
   </main>
@@ -95,11 +99,22 @@
   const goBtn = document.getElementById("go");
   const errEl = document.getElementById("error");
   const resultEl = document.getElementById("result");
+  const dlVideo = document.getElementById("dlVideo");
+  const dlAudio = document.getElementById("dlAudio");
+  const dlImage = document.getElementById("dlImage");
+  const noteEl = document.getElementById("note");
+
+  let current = { url: "", title: "download" };
 
   function fmt(sec) {
     if (!sec) return "";
     const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
     return `${m}:${String(s).padStart(2, "0")}`;
+  }
+
+  function showError(msg) {
+    errEl.textContent = msg;
+    errEl.style.display = "block";
   }
 
   form.addEventListener("submit", async (e) => {
@@ -119,6 +134,8 @@
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || "Something went wrong.");
 
+      current = { url, title: data.title || "download" };
+
       const thumb = document.getElementById("thumb");
       thumb.src = data.thumbnail || "";
       thumb.style.display = data.thumbnail ? "block" : "none";
@@ -127,16 +144,49 @@
         [data.site, data.uploader, fmt(data.duration)].filter(Boolean).join(" · ");
 
       const q = (type) =>
-        `/api/download?type=${type}&url=${encodeURIComponent(url)}&title=${encodeURIComponent(data.title || "download")}`;
-      document.getElementById("dlVideo").href = q("video");
-      document.getElementById("dlAudio").href = q("audio");
+        `/api/download?type=${type}&url=${encodeURIComponent(url)}&title=${encodeURIComponent(current.title)}`;
+      dlVideo.href = q("video");
+      dlAudio.href = q("audio");
+
+      // image-only posts have no video or audio
+      const imageOnly = !!data.imageOnly;
+      dlVideo.style.display = imageOnly ? "none" : "";
+      dlAudio.style.display = imageOnly ? "none" : "";
+      noteEl.style.display = imageOnly ? "none" : "block";
+
       resultEl.style.display = "block";
     } catch (err) {
-      errEl.textContent = err.message;
-      errEl.style.display = "block";
+      showError(err.message);
     } finally {
       goBtn.disabled = false;
       goBtn.textContent = "Fetch";
+    }
+  });
+
+  // Download Image: fetch the picture, then save it (errors are shown here, not on a new page)
+  dlImage.addEventListener("click", async () => {
+    errEl.style.display = "none";
+    dlImage.disabled = true;
+    const label = dlImage.textContent;
+    dlImage.textContent = "Getting image...";
+    try {
+      const api = `/api/image?url=${encodeURIComponent(current.url)}&title=${encodeURIComponent(current.title)}`;
+      const r = await fetch(api);
+      if (!r.ok) throw new Error((await r.text()) || "Could not get the image.");
+      const blob = await r.blob();
+      const ext = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : blob.type.includes("gif") ? "gif" : "jpg";
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${(current.title || "image").replace(/[^\w\- ]+/g, "").trim().slice(0, 60) || "image"}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      dlImage.disabled = false;
+      dlImage.textContent = label;
     }
   });
 </script>
