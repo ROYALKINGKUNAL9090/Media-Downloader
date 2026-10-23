@@ -1,5 +1,3 @@
-FROM node:20-slim
-
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         python3 \
@@ -10,16 +8,21 @@ RUN apt-get update \
     && curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
     && chmod a+rx /usr/local/bin/yt-dlp
 
-WORKDIR /app
+    /usr/local/bin/yt-dlp
 
-COPY package*.json ./
+    docker build -t media-downloader .
+
+    docker run --rm media-downloader yt-dlp --version
+
+    curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+chmod a+rx /usr/local/bin/yt-dlp
+yt-dlp --version
+
+pip install yt-dlp
+
+RUN npm install\
+COPY . .
+
 RUN npm install
 
 COPY . .
-
-RUN addgroup --system app && adduser --system --ingroup app app \
-    && chown -R app:app /app
-
-USER app
-
-CMD ["node", "server.js"]
