@@ -81,18 +81,23 @@ function run(cmd, args, cb) {
 
 function getYtDlpArgs(extraArgs = []) {
   const args = [...extraArgs];
+  const options = [];
 
   const cookieFile = process.env.YOUTUBE_COOKIES_FILE;
   const browser = process.env.YOUTUBE_COOKIES_BROWSER;
 
   if (cookieFile && fs.existsSync(cookieFile)) {
-    args.push("--cookies", cookieFile);
+    options.push("--cookies", cookieFile);
   } else if (browser) {
-    args.push("--cookies-from-browser", browser);
+    options.push("--cookies-from-browser", browser);
   }
 
   // This often helps with YouTube anti-bot restrictions
-  args.push("--extractor-args", "youtube:player_client=android");
+  options.push("--extractor-args", "youtube:player_client=android");
+
+  // yt-dlp stops parsing options after `--`, so insert options before the URL.
+  const separator = args.indexOf("--");
+  args.splice(separator === -1 ? args.length : separator, 0, ...options);
 
   return args;
 }
