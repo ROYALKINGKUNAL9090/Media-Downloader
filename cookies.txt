@@ -16,3 +16,5 @@ RUN npm install --omit=dev
 COPY . .
 
 CMD ["bash", "-lc", "yt-dlp --cookies /app/cookies.txt \"${VIDEO_URL}\""]
+
+docker run --rm -v "$PWD:/app" -e VIDEO_URL="https://www.youtube.com/watch?v=vRjaGgDsWSo" your-image
