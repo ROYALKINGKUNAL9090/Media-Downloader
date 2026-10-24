@@ -13,27 +13,46 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // ---------- helpers ----------
 
+function isBlockedHost(hostname) {
+  const host = hostname.toLowerCase();
+  const normalized = host.startsWith("[") && host.endsWith("]") ? host.slice(1, -1) : host;
+
+  if (
+    normalized === "localhost" ||
+    normalized.endsWith(".local") ||
+    normalized === "0.0.0.0" ||
+    normalized === "::1" ||
+    normalized === "[::1]"
+  ) {
+    return true;
+  }
+
+  return (
+    /^127\./.test(normalized) ||
+    /^10\./.test(normalized) ||
+    /^192\.168\./.test(normalized) ||
+    /^169\.254\./.test(normalized) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(normalized) ||
+    /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(normalized)
+  );
+}
+
 function validateUrl(raw) {
+  if (typeof raw !== "string") return null;
+
+  const value = raw.trim();
+  if (!value) return null;
+
   let u;
   try {
-    u = new URL(raw);
+    u = new URL(value);
   } catch {
     return null;
   }
+
   if (!["http:", "https:"].includes(u.protocol)) return null;
-  const h = u.hostname.toLowerCase();
-  if (
-    h === "localhost" ||
-    h.endsWith(".local") ||
-    /^127\./.test(h) ||
-    /^10\./.test(h) ||
-    /^192\.168\./.test(h) ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(h) ||
-    h === "0.0.0.0" ||
-    h === "::1"
-  ) {
-    return null;
-  }
+  if (isBlockedHost(u.hostname)) return null;
+
   return u.toString();
 }
 
@@ -42,7 +61,7 @@ const hits = new Map();
 function rateLimit(max) {
   return (req, res, next) => {
     const now = Date.now();
-    const key = req.ip;
+    const key = req.ip || "unknown";
     const list = (hits.get(key) || []).filter((t) => now - t < 60_000);
     if (list.length >= max) {
       return res.status(429).json({ error: "Too many requests. Try again in a minute." });
@@ -54,7 +73,11 @@ function rateLimit(max) {
 }
 
 function safeName(s) {
-  return (s || "download").replace(/[^\w\-. ]+/g, "").trim().slice(0, 80) || "download";
+  return String(s || "download")
+    .replace(/[\x00-\x1f\x7f]/g, "")
+    .replace(/[^\w\-. ]+/g, "")
+    .trim()
+    .slice(0, 80) || "download";
 }
 
 function cleanup(dir) {
@@ -108,14 +131,19 @@ const IMG_EXTS = ["jpg", "jpeg", "png", "webp", "gif"];
 const BROWSER_UA =
   "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36";
 
+function imageExtMatches(url, ext) {
+  const e = String(ext || "").toLowerCase();
+  return IMG_EXTS.includes(e) || /\.(jpe?g|png|webp|gif)(?:[?#]|$)/i.test(String(url || ""));
+}
+
 // find the image link inside yt-dlp's JSON (first item if it is a carousel)
 function pickImageUrl(j) {
   if (!j) return null;
   if (Array.isArray(j.entries) && j.entries.length) return pickImageUrl(j.entries[0]);
-  if (j.url && IMG_EXTS.includes(String(j.ext || "").toLowerCase())) return j.url;
+  if (j.url && imageExtMatches(j.url, j.ext)) return j.url;
   if (Array.isArray(j.formats)) {
     const f = j.formats
-      .filter((x) => x && x.url && IMG_EXTS.includes(String(x.ext || "").toLowerCase()))
+      .filter((x) => x && x.url && imageExtMatches(x.url, x.ext))
       .pop();
     if (f) return f.url;
   }
@@ -136,7 +164,7 @@ function hasVideoContent(j) {
 }
 
 function decodeHtml(s) {
-  return String(s)
+  return String(s || "")
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
