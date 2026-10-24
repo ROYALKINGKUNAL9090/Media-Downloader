@@ -66,10 +66,16 @@ function run(cmd, args, cb) {
   const p = spawn(cmd, args);
   let out = "";
   let err = "";
+  let settled = false;
+  const finish = (error) => {
+    if (settled) return;
+    settled = true;
+    cb(error, out, err);
+  };
   p.stdout.on("data", (d) => (out += d));
   p.stderr.on("data", (d) => (err += d));
-  p.on("error", (e) => cb(e, out, err));
-  p.on("close", (code) => cb(code === 0 ? null : new Error("exit " + code), out, err));
+  p.on("error", finish);
+  p.on("close", (code) => finish(code === 0 ? null : new Error("exit " + code)));
   return p;
 }
 
@@ -197,16 +203,21 @@ app.post("/api/info", rateLimit(20), (req, res) => {
 
   let out = "";
   let err = "";
+  let settled = false;
   const timer = setTimeout(() => p.kill("SIGKILL"), 30_000);
 
   p.stdout.on("data", (d) => (out += d));
   p.stderr.on("data", (d) => (err += d));
   p.on("error", () => {
+    if (settled) return;
+    settled = true;
     clearTimeout(timer);
     res.status(500).json({ error: "yt-dlp is not installed on the server." });
   });
 
   p.on("close", async (code) => {
+    if (settled) return;
+    settled = true;
     clearTimeout(timer);
 
     if (code !== 0) {
@@ -267,6 +278,7 @@ app.get("/api/image", rateLimit(10), (req, res) => {
 
   let out = "";
   let err = "";
+  let settled = false;
   const timer = setTimeout(() => p.kill("SIGKILL"), 30_000);
 
   p.stdout.on("data", (d) => (out += d));
@@ -295,11 +307,15 @@ app.get("/api/image", rateLimit(10), (req, res) => {
   };
 
   p.on("error", () => {
+    if (settled) return;
+    settled = true;
     clearTimeout(timer);
     if (!res.headersSent) res.status(500).send("yt-dlp is not installed on the server.");
   });
 
   p.on("close", async (code) => {
+    if (settled) return;
+    settled = true;
     clearTimeout(timer);
     try {
       if (code === 0) {
@@ -358,7 +374,7 @@ app.get("/api/download", rateLimit(10), (req, res) => {
   const timer = setTimeout(() => p.kill("SIGKILL"), 10 * 60_000);
 
   let aborted = false;
-  req.on("close", () => {
+  res.on("close", () => {
     if (!res.writableEnded) {
       aborted = true;
       p.kill("SIGKILL");
@@ -369,6 +385,8 @@ app.get("/api/download", rateLimit(10), (req, res) => {
     cleanup(dir);
     if (!res.headersSent) res.status(500).send(msg);
   }
+
+  let settled = false;
 
   function send(file) {
     res.setHeader("Content-Type", mime);
@@ -382,11 +400,15 @@ app.get("/api/download", rateLimit(10), (req, res) => {
   }
 
   p.on("error", () => {
+    if (settled) return;
+    settled = true;
     clearTimeout(timer);
     fail("yt-dlp is not installed on the server.");
   });
 
   p.on("close", (code) => {
+    if (settled) return;
+    settled = true;
     clearTimeout(timer);
     if (aborted) return cleanup(dir);
 
