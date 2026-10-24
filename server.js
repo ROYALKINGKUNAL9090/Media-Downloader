@@ -126,6 +126,15 @@ function pickImageUrl(j) {
   return null;
 }
 
+function hasVideoContent(j) {
+  if (!j) return false;
+  if (j.vcodec && j.vcodec !== "none") return true;
+  if (Array.isArray(j.formats) && j.formats.some((f) => f && f.vcodec && f.vcodec !== "none")) {
+    return true;
+  }
+  return Array.isArray(j.entries) && j.entries.some(hasVideoContent);
+}
+
 function decodeHtml(s) {
   return String(s)
     .replace(/&amp;/g, "&")
@@ -260,6 +269,7 @@ app.post("/api/info", rateLimit(20), (req, res) => {
         duration: j.duration,
         uploader: j.uploader,
         site: j.extractor_key,
+        imageOnly: Boolean(pickImageUrl(j) && !hasVideoContent(j)),
       });
     } catch {
       res.status(500).json({ error: "Unexpected response from downloader." });
@@ -357,6 +367,7 @@ app.get("/api/download", rateLimit(10), (req, res) => {
       "--no-playlist",
       "-f", "bestaudio/best",
       "-x", "--audio-format", "mp3", "--audio-quality", "0",
+      "--print", "after_move:filepath",
       "-o", outTemplate, "--", url,
     ]);
     ext = "mp3";
@@ -367,6 +378,7 @@ app.get("/api/download", rateLimit(10), (req, res) => {
       "-f", "bv*+ba/b",
       "-S", "res:1080,vcodec:h264,acodec:aac",
       "--merge-output-format", "mp4",
+      "--print", "after_move:filepath",
       "-o", outTemplate, "--", url,
     ]);
     ext = "mp4";
@@ -374,7 +386,9 @@ app.get("/api/download", rateLimit(10), (req, res) => {
   }
 
   const p = spawn("yt-dlp", args);
+  let out = "";
   let err = "";
+  p.stdout.on("data", (d) => (out += d));
   p.stderr.on("data", (d) => (err += d));
   const timer = setTimeout(() => p.kill("SIGKILL"), 10 * 60_000);
 
@@ -394,8 +408,12 @@ app.get("/api/download", rateLimit(10), (req, res) => {
   let settled = false;
 
   function send(file) {
-    res.setHeader("Content-Type", mime);
-    res.setHeader("Content-Disposition", `attachment; filename="${title}.${ext}"`);
+    const outputExt = type === "audio" ? ext : (path.extname(file).slice(1).toLowerCase() || ext);
+    const outputMime = type === "audio"
+      ? mime
+      : ({ mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime", mkv: "video/x-matroska" }[outputExt] || "application/octet-stream");
+    res.setHeader("Content-Type", outputMime);
+    res.setHeader("Content-Disposition", `attachment; filename="${title}.${outputExt}"`);
     res.setHeader("Content-Length", fs.statSync(file).size);
     const stream = fs.createReadStream(file);
     stream.pipe(res);
@@ -417,7 +435,10 @@ app.get("/api/download", rateLimit(10), (req, res) => {
     clearTimeout(timer);
     if (aborted) return cleanup(dir);
 
-    const raw = path.join(dir, "raw." + ext);
+    const printedPath = out.trim().split(/\r?\n/).pop();
+    const raw = printedPath && path.resolve(printedPath).startsWith(dir + path.sep)
+      ? path.resolve(printedPath)
+      : path.join(dir, "raw." + ext);
     if (code !== 0 || !fs.existsSync(raw)) {
       console.error("download error:", err);
       const reason = err.trim().split("\n").pop() || "unknown";
