@@ -34,7 +34,7 @@ Open http://localhost:3000
 ## Project structure
 
 ```
-server.js          Express API (/api/info, /api/download)
+server.js          Express API (/api/info, /api/image, /api/download)
 public/index.html  Frontend page
 ```
 
