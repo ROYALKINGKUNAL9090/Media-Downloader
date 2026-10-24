@@ -3,3 +3,5 @@ docker run --rm \
   -w /app \
   your-image \
   yt-dlp --cookies /app/cookies.txt "https://www.youtube.com/watch?v=vRjaGgDsWSo"
+
+yt-dlp --cookies "cookies.txt" "https://www.youtube.com/watch?v=vRjaGgDsWSo"
