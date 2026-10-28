@@ -6,9 +6,7 @@ A simple website to download video (MP4) or audio (MP3) from social media links,
 
 - Node.js 18+
 - `yt-dlp` installed and on your PATH
-- Deno installed and on your PATH (needed by yt-dlp for current YouTube video extraction)
 - `ffmpeg` installed (needed for MP3 conversion)
-- `gallery-dl` installed for Instagram downloads (Docker installs it automatically)
 
 Install them:
 
@@ -19,7 +17,6 @@ brew install yt-dlp ffmpeg
 # Ubuntu / Debian
 sudo apt install ffmpeg
 pip install -U yt-dlp
-curl -fsSL https://deno.land/install.sh | sh
 
 # Windows
 winget install yt-dlp ffmpeg
@@ -44,8 +41,7 @@ public/index.html  Frontend page
 ## Deploying
 
 This needs a real server (VPS, Railway, Render, etc.), not a static host, because it runs yt-dlp and ffmpeg.
-The Docker image downloads the latest yt-dlp stable release during image creation. Rebuild the image to pick up newer releases. This avoids making an additional GitHub API request during the build, which can fail when rate-limited.
-For a native installation, install gallery-dl with `pipx install gallery-dl` so the Instagram download endpoint is available.
+Keep yt-dlp updated (`yt-dlp -U`), since platforms change often.
 
 ## Notes
 
