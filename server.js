@@ -519,8 +519,8 @@ app.get("/api/download", rateLimit(10), (req, res) => {
   } else {
     args = getYtDlpArgs([
       "--no-playlist",
-      "-f", "bestvideo*[height<=1080]+bestaudio/best[height<=1080]/best",
-      "-S", "vcodec:h264,res:1080,acodec:aac",
+      "-f", "bv*[height<=1080]+ba/b[height<=1080]/b",
+      "-S", "res:1080,vcodec:h264,acodec:aac",
       "--merge-output-format", "mp4",
       "--print", "after_move:filepath",
       "-o", outTemplate, "--", url,
