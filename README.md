@@ -42,7 +42,7 @@ public/index.html  Frontend page
 ## Deploying
 
 This needs a real server (VPS, Railway, Render, etc.), not a static host, because it runs yt-dlp and ffmpeg.
-The Docker image switches yt-dlp to the latest `master` channel build during image creation. Rebuild the image to pick up newer builds. For a manually installed yt-dlp binary, use `yt-dlp --update-to master` to switch to and update to the latest master build.
+The Docker image downloads the latest yt-dlp stable release during image creation. Rebuild the image to pick up newer releases. This avoids making an additional GitHub API request during the build, which can fail when rate-limited.
 For a native installation, install gallery-dl with `pipx install gallery-dl` so the Instagram download endpoint is available.
 
 ## Notes
