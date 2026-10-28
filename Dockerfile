@@ -6,10 +6,12 @@ RUN apt-get update \
         python3-venv \
         ffmpeg \
         curl \
+        unzip \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && curl --fail --location --retry 3 https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
     && chmod a+rx /usr/local/bin/yt-dlp \
+    && curl --fail --location --retry 3 https://deno.land/install.sh | DENO_INSTALL=/usr/local sh \
     && python3 -m venv /opt/gallery-dl \
     && /opt/gallery-dl/bin/pip install --no-cache-dir gallery-dl
 
