@@ -56,27 +56,18 @@ function validateUrl(raw) {
   return u.toString();
 }
 
-// In-memory rate limiter, scoped independently to each IP and endpoint.
+// very simple in-memory rate limiter (per IP, per minute)
 const hits = new Map();
 function rateLimit(max) {
   return (req, res, next) => {
     const now = Date.now();
-    const key = `${req.ip || "unknown"}:${req.method}:${req.path}`;
+    const key = req.ip || "unknown";
     const list = (hits.get(key) || []).filter((t) => now - t < 60_000);
     if (list.length >= max) {
-      res.set("Retry-After", String(Math.max(1, Math.ceil((60_000 - (now - list[0])) / 1000))));
       return res.status(429).json({ error: "Too many requests. Try again in a minute." });
     }
     list.push(now);
     hits.set(key, list);
-
-    // Drop expired buckets periodically so this map stays bounded over time.
-    if (hits.size > 1000) {
-      for (const [bucket, timestamps] of hits) {
-        if (!timestamps.some((timestamp) => now - timestamp < 60_000)) hits.delete(bucket);
-      }
-    }
-
     next();
   };
 }
@@ -123,6 +114,9 @@ function getYtDlpArgs(extraArgs = []) {
   } else if (browser) {
     options.push("--cookies-from-browser", browser);
   }
+
+  // This often helps with YouTube anti-bot restrictions
+  options.push("--extractor-args", "youtube:player_client=android");
 
   // yt-dlp stops parsing options after `--`, so insert options before the URL.
   const separator = args.indexOf("--");
@@ -233,116 +227,6 @@ async function fetchImage(imgUrl) {
 
   return { buf, type };
 }
-
-
-// Download Instagram post/reel media using gallery-dl, without changing yt-dlp
-// behavior for YouTube or other supported platforms.
-app.get("/api/instagram-download", rateLimit(5), async (req, res) => {
-  const url = validateUrl(req.query.url);
-  if (!url) return res.status(400).send("Invalid link.");
-
-  let parsed;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return res.status(400).send("Invalid link.");
-  }
-
-  const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
-  if (host !== "instagram.com" && !host.endsWith(".instagram.com")) {
-    return res.status(400).send("Please enter an Instagram link.");
-  }
-
-  const dir = path.join(os.tmpdir(), "ig-" + crypto.randomBytes(8).toString("hex"));
-  fs.mkdirSync(dir, { recursive: true });
-
-  const p = spawn("gallery-dl", [
-    "--directory", dir,
-    "--filename", "{num:>03}_{filename}.{extension}",
-    "--no-mtime",
-    url,
-  ], { stdio: ["ignore", "pipe", "pipe"] });
-
-  let err = "";
-  let settled = false;
-  const timer = setTimeout(() => p.kill("SIGKILL"), 5 * 60_000);
-
-  const finishError = (status, message) => {
-    cleanup(dir);
-    if (!res.headersSent) res.status(status).send(message);
-  };
-
-  p.stderr.on("data", (d) => { err += d.toString(); });
-  p.on("error", () => {
-    if (settled) return;
-    settled = true;
-    clearTimeout(timer);
-    finishError(500, "Instagram downloader (gallery-dl) is not installed on the server.");
-  });
-
-  p.on("close", async (code) => {
-    if (settled) return;
-    settled = true;
-    clearTimeout(timer);
-
-    if (code !== 0) {
-      console.error("gallery-dl Instagram error:", err);
-      const reason = err.trim().split(/\r?\n/).filter(Boolean).slice(-1)[0];
-      return finishError(422,
-        "Instagram download failed. The post may be private, login-restricted, unsupported, or temporarily blocked." +
-        (reason ? " Details: " + reason : ""));
-    }
-
-    try {
-      const files = [];
-      const walk = (folder) => {
-        for (const item of fs.readdirSync(folder, { withFileTypes: true })) {
-          const full = path.join(folder, item.name);
-          if (item.isDirectory()) walk(full);
-          else if (item.isFile()) files.push(full);
-        }
-      };
-      walk(dir);
-
-      if (!files.length) return finishError(404, "No media files were downloaded from this Instagram post.");
-
-      const safeTitle = safeName(req.query.title || "instagram-post");
-      if (files.length === 1) {
-        const file = files[0];
-        const ext = path.extname(file).toLowerCase();
-        const mime = ({
-          ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
-          ".webp": "image/webp", ".gif": "image/gif", ".mp4": "video/mp4",
-          ".mov": "video/quicktime"
-        })[ext] || "application/octet-stream";
-        res.setHeader("Content-Type", mime);
-        res.setHeader("Content-Disposition", `attachment; filename="${safeTitle}${ext}"`);
-        res.setHeader("Content-Length", fs.statSync(file).size);
-        const stream = fs.createReadStream(file);
-        stream.on("error", () => { cleanup(dir); if (!res.headersSent) res.status(500).end("Could not read downloaded file."); });
-        stream.on("close", () => cleanup(dir));
-        return stream.pipe(res);
-      }
-
-      // Multiple images/videos (carousel) are returned as a ZIP archive.
-      res.setHeader("Content-Type", "application/zip");
-      res.setHeader("Content-Disposition", `attachment; filename="${safeTitle}.zip"`);
-      const archive = require("archiver")("zip", { zlib: { level: 6 } });
-      archive.on("error", (e) => {
-        console.error("Instagram archive error:", e.message);
-        cleanup(dir);
-        if (!res.headersSent) res.status(500).end("Could not package Instagram media.");
-      });
-      res.on("close", () => cleanup(dir));
-      archive.pipe(res);
-      for (const file of files) archive.file(file, { name: path.relative(dir, file) });
-      await archive.finalize();
-    } catch (e) {
-      console.error("Instagram download processing error:", e.message);
-      finishError(500, "Could not prepare Instagram download.");
-    }
-  });
-});
 
 // ---------- routes ----------
 
@@ -519,7 +403,7 @@ app.get("/api/download", rateLimit(10), (req, res) => {
   } else {
     args = getYtDlpArgs([
       "--no-playlist",
-      "-f", "bv*[height<=1080]+ba/b[height<=1080]/b",
+      "-f", "bv*+ba/b",
       "-S", "res:1080,vcodec:h264,acodec:aac",
       "--merge-output-format", "mp4",
       "--print", "after_move:filepath",
