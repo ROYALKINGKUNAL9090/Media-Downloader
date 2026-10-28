@@ -5,72 +5,70 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SaveAnyClip</title>
 <style>
-  :root {
-    --bg: #0f1115; --card: #181b22; --text: #eef0f4; --muted: #9aa3b2;
-    --accent: #6c5ce7; --accent2: #00cec9; --border: #272b35; --err: #ff6b6b;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    display: flex; flex-direction: column; align-items: center; padding: 0 16px;
-  }
-  header { text-align: center; margin-top: 56px; }
-  h1 {
-    font-size: clamp(2rem, 6vw, 3rem); margin: 0 0 8px;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-  }
-  header p { color: var(--muted); margin: 0; }
-  main { width: 100%; max-width: 640px; margin-top: 32px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
-  .row { display: flex; gap: 8px; }
-  input[type=url] {
-    flex: 1; min-width: 0; padding: 14px; border-radius: 10px; border: 1px solid var(--border);
-    background: #0f1115; color: var(--text); font-size: 1rem;
-  }
-  input:focus { outline: 2px solid var(--accent); }
-  button {
-    padding: 14px 18px; border: 0; border-radius: 10px; font-size: 1rem; font-weight: 600;
-    cursor: pointer; color: #fff; background: var(--accent);
-  }
-  button:disabled { opacity: .6; cursor: wait; }
-  .platforms { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-  .chip { font-size: .8rem; color: var(--muted); border: 1px solid var(--border); padding: 4px 10px; border-radius: 99px; }
-  #error { color: var(--err); margin-top: 12px; display: none; }
-  #result { display: none; margin-top: 16px; }
-  #result img { width: 100%; border-radius: 12px; display: block; }
-  #title { font-weight: 600; margin: 12px 0 2px; }
-  #meta { color: var(--muted); font-size: .9rem; margin-bottom: 14px; }
-  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-  .actions a, .actions button {
-    flex: 1 1 140px; text-align: center; text-decoration: none; padding: 14px; border-radius: 10px;
-    font-weight: 600; color: #fff; font-size: 1rem;
-  }
-  .video { background: var(--accent); }
-  .audio { background: #00a8a3; }
-  .image { background: #e17f2d; }
-  #note { color: var(--muted); font-size: .85rem; margin-top: 12px; display: none; }
-  footer { color: var(--muted); font-size: .8rem; text-align: center; margin: 32px 0; max-width: 560px; }
+  :root{color-scheme:dark;--bg:#101014;--panel:#1a1a21;--panel-soft:#22222b;--text:#f7f4f1;--muted:#a19da9;--line:#34323c;--accent:#fa7257;--accent2:#f6b85d;--error:#ff8c83}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -18%,#34303e 0,transparent 52%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column;align-items:center;padding:0 22px}
+  .topbar{width:100%;max-width:1080px;height:82px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff12}
+  .brand{display:flex;align-items:center;gap:11px;color:var(--text);text-decoration:none;font-size:1.04rem;font-weight:750;letter-spacing:-.03em}
+  .brand-mark{width:34px;height:34px;border-radius:11px;background:linear-gradient(145deg,var(--accent),#f5a75f);display:grid;place-items:center;color:#201719;font-size:19px;font-weight:900;box-shadow:0 5px 24px #fa725733}
+  .top-note{font-size:.82rem;color:var(--muted);display:flex;align-items:center;gap:8px}.status-dot{width:7px;height:7px;background:#67d3a2;border-radius:50%;box-shadow:0 0 12px #67d3a288}
+  header{text-align:center;margin:76px 0 30px;max-width:700px}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;color:#ffc5a4;background:#fa725714;border:1px solid #fa725733;padding:7px 12px;border-radius:99px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+  h1{font-size:clamp(2.65rem,7vw,4.55rem);line-height:1.02;letter-spacing:-.075em;margin:19px 0 15px;font-weight:780}
+  h1 span{background:linear-gradient(100deg,#ff9775 10%,#f8c56d 90%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  header p{color:var(--muted);font-size:1.04rem;line-height:1.65;margin:0}
+  main{width:100%;max-width:690px}
+  .card{background:linear-gradient(145deg,#222129,#19191f 70%);border:1px solid #ffffff17;border-radius:22px;padding:26px;box-shadow:0 22px 80px #0005,inset 0 1px #ffffff08}
+  .form-label{display:block;color:#e5e0e5;font-size:.88rem;font-weight:650;margin:0 0 11px}
+  .row{display:flex;gap:10px;padding:6px;background:#111116;border:1px solid #ffffff1b;border-radius:14px;transition:border-color .2s,box-shadow .2s}
+  .row:focus-within{border-color:#fa9275;box-shadow:0 0 0 3px #fa72571c}
+  input[type=url]{flex:1;min-width:0;padding:13px 12px;border:0;outline:0;background:transparent;color:var(--text);font-size:.97rem}
+  input::placeholder{color:#77737e}
+  button{border:0;border-radius:10px;font-size:.92rem;font-weight:750;cursor:pointer;color:#271916;background:linear-gradient(115deg,#ff9472,#f5be68);padding:0 22px;transition:transform .18s,filter .18s}
+  button:hover{filter:brightness(1.07);transform:translateY(-1px)}button:disabled{opacity:.6;cursor:wait;transform:none}
+  .platform-heading{font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;color:#807c88;font-weight:700;margin:24px 0 10px}
+  .platforms{display:flex;flex-wrap:wrap;gap:8px}.chip{font-size:.78rem;color:#c5c0ca;background:#ffffff06;border:1px solid #ffffff13;padding:7px 11px;border-radius:99px}
+  .trust-row{display:flex;gap:18px;align-items:center;border-top:1px solid #ffffff12;margin-top:22px;padding-top:17px;color:#96919e;font-size:.77rem}.trust-item{display:flex;align-items:center;gap:7px}.trust-icon{color:#78d5a5;font-size:.95rem}
+  #error{color:var(--error);background:#ff716212;border:1px solid #ff716233;border-radius:10px;margin-top:14px;padding:11px 13px;font-size:.9rem;display:none}
+  #result{display:none;margin-top:18px;background:#131318;border:1px solid #ffffff17;border-radius:16px;padding:16px}
+  #result img{width:100%;max-height:360px;object-fit:cover;border-radius:11px;display:block;background:var(--panel-soft)}
+  #title{font-weight:700;font-size:1.02rem;line-height:1.4;margin:13px 0 3px}#meta{color:var(--muted);font-size:.83rem;margin-bottom:14px}
+  .actions{display:flex;flex-wrap:wrap;gap:9px}.actions a,.actions button{flex:1 1 145px;min-height:46px;display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;padding:12px;border-radius:10px;font-weight:700;color:#fff;font-size:.88rem}
+  .video{background:#e76d57}.audio{background:#288e79}.image{background:#bd783a}#note{color:var(--muted);font-size:.8rem;margin-top:12px;display:none}
+  footer{color:#807c88;font-size:.77rem;text-align:center;margin:28px 0 34px;max-width:620px;line-height:1.6}
+  @media(max-width:560px){body{padding:0 16px}.topbar{height:68px}.top-note{font-size:0}.top-note .status-dot{width:8px;height:8px}header{margin:55px 0 25px}header p{font-size:.93rem}.card{padding:18px;border-radius:18px}.row{gap:4px}input[type=url]{font-size:.88rem;padding-left:9px}#go{padding:0 15px;font-size:.85rem}.trust-row{gap:12px;justify-content:space-between;font-size:.69rem}.chip{font-size:.74rem;padding:6px 9px}}
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
 </style>
 </head>
 <body>
+  <nav class="topbar" aria-label="Main navigation">
+    <a class="brand" href="/" aria-label="SaveAnyClip home"><span class="brand-mark" aria-hidden="true">↘</span><span>saveanyclip</span></a>
+    <div class="top-note"><span class="status-dot" aria-hidden="true"></span>Free online downloader</div>
+  </nav>
   <header>
-    <h1>SaveAnyClip</h1>
-    <p>Paste a link. Get the video, audio or image.</p>
+    <div class="eyebrow"><span aria-hidden="true">✦</span> Your media, made simple</div>
+    <h1>Save what you <span>love.</span></h1>
+    <p>Videos, audio, and images from your favorite places on the web.<br>One link is all it takes.</p>
   </header>
 
   <main>
     <div class="card">
+      <label class="form-label" for="url">Paste a link to get started</label>
       <form id="form" class="row">
-        <input id="url" type="url" placeholder="Paste a video or post link here..." required>
-        <button id="go" type="submit">Fetch</button>
+        <input id="url" type="url" placeholder="https://…" aria-label="Video or post URL" required>
+        <button id="go" type="submit">Get media <span aria-hidden="true">→</span></button>
       </form>
+      <div class="platform-heading">Works with 1,000+ sites</div>
       <div class="platforms">
         <span class="chip">YouTube</span><span class="chip">Instagram</span>
         <span class="chip">Facebook</span><span class="chip">TikTok</span>
         <span class="chip">X / Twitter</span><span class="chip">Reddit</span>
         <span class="chip">Vimeo</span><span class="chip">+ 1000 more</span>
+      </div>
+      <div class="trust-row">
+        <span class="trust-item"><span class="trust-icon" aria-hidden="true">✓</span> No sign-up needed</span>
+        <span class="trust-item"><span class="trust-icon" aria-hidden="true">✓</span> Fast and simple</span>
+        <span class="trust-item"><span class="trust-icon" aria-hidden="true">✓</span> Private by design</span>
       </div>
       <div id="error"></div>
 
