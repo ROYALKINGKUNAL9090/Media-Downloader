@@ -3,93 +3,67 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SaveAnyClip</title>
+<meta name="theme-color" content="#090b12">
+<meta name="description" content="Save videos, audio and images from links you have permission to download.">
+<title>SaveAnyClip — Media Downloader</title>
 <style>
-  :root{color-scheme:dark;--bg:#101014;--panel:#1a1a21;--panel-soft:#22222b;--text:#f7f4f1;--muted:#a19da9;--line:#34323c;--accent:#fa7257;--accent2:#f6b85d;--error:#ff8c83}
-  *{box-sizing:border-box}
-  body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -18%,#34303e 0,transparent 52%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column;align-items:center;padding:0 22px}
-  .topbar{width:100%;max-width:1080px;height:82px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff12}
-  .brand{display:flex;align-items:center;gap:11px;color:var(--text);text-decoration:none;font-size:1.04rem;font-weight:750;letter-spacing:-.03em}
-  .brand-mark{width:34px;height:34px;border-radius:11px;background:linear-gradient(145deg,var(--accent),#f5a75f);display:grid;place-items:center;color:#201719;font-size:19px;font-weight:900;box-shadow:0 5px 24px #fa725733}
-  .top-note{font-size:.82rem;color:var(--muted);display:flex;align-items:center;gap:8px}.status-dot{width:7px;height:7px;background:#67d3a2;border-radius:50%;box-shadow:0 0 12px #67d3a288}
-  header{text-align:center;margin:76px 0 30px;max-width:700px}
-  .eyebrow{display:inline-flex;align-items:center;gap:8px;color:#ffc5a4;background:#fa725714;border:1px solid #fa725733;padding:7px 12px;border-radius:99px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
-  h1{font-size:clamp(2.65rem,7vw,4.55rem);line-height:1.02;letter-spacing:-.075em;margin:19px 0 15px;font-weight:780}
-  h1 span{background:linear-gradient(100deg,#ff9775 10%,#f8c56d 90%);-webkit-background-clip:text;background-clip:text;color:transparent}
-  header p{color:var(--muted);font-size:1.04rem;line-height:1.65;margin:0}
-  main{width:100%;max-width:690px}
-  .card{background:linear-gradient(145deg,#222129,#19191f 70%);border:1px solid #ffffff17;border-radius:22px;padding:26px;box-shadow:0 22px 80px #0005,inset 0 1px #ffffff08}
-  .form-label{display:block;color:#e5e0e5;font-size:.88rem;font-weight:650;margin:0 0 11px}
-  .row{display:flex;gap:10px;padding:6px;background:#111116;border:1px solid #ffffff1b;border-radius:14px;transition:border-color .2s,box-shadow .2s}
-  .row:focus-within{border-color:#fa9275;box-shadow:0 0 0 3px #fa72571c}
-  input[type=url]{flex:1;min-width:0;padding:13px 12px;border:0;outline:0;background:transparent;color:var(--text);font-size:.97rem}
-  input::placeholder{color:#77737e}
-  button{border:0;border-radius:10px;font-size:.92rem;font-weight:750;cursor:pointer;color:#271916;background:linear-gradient(115deg,#ff9472,#f5be68);padding:0 22px;transition:transform .18s,filter .18s}
-  button:hover{filter:brightness(1.07);transform:translateY(-1px)}button:disabled{opacity:.6;cursor:wait;transform:none}
-  .platform-heading{font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;color:#807c88;font-weight:700;margin:24px 0 10px}
-  .platforms{display:flex;flex-wrap:wrap;gap:8px}.chip{font-size:.78rem;color:#c5c0ca;background:#ffffff06;border:1px solid #ffffff13;padding:7px 11px;border-radius:99px}
-  .trust-row{display:flex;gap:18px;align-items:center;border-top:1px solid #ffffff12;margin-top:22px;padding-top:17px;color:#96919e;font-size:.77rem}.trust-item{display:flex;align-items:center;gap:7px}.trust-icon{color:#78d5a5;font-size:.95rem}
-  #error{color:var(--error);background:#ff716212;border:1px solid #ff716233;border-radius:10px;margin-top:14px;padding:11px 13px;font-size:.9rem;display:none}
-  #result{display:none;margin-top:18px;background:#131318;border:1px solid #ffffff17;border-radius:16px;padding:16px}
-  #result img{width:100%;max-height:360px;object-fit:cover;border-radius:11px;display:block;background:var(--panel-soft)}
-  #title{font-weight:700;font-size:1.02rem;line-height:1.4;margin:13px 0 3px}#meta{color:var(--muted);font-size:.83rem;margin-bottom:14px}
-  .actions{display:flex;flex-wrap:wrap;gap:9px}.actions a,.actions button{flex:1 1 145px;min-height:46px;display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;padding:12px;border-radius:10px;font-weight:700;color:#fff;font-size:.88rem}
-  .video{background:#e76d57}.audio{background:#288e79}.image{background:#bd783a}#note{color:var(--muted);font-size:.8rem;margin-top:12px;display:none}
-  footer{color:#807c88;font-size:.77rem;text-align:center;margin:28px 0 34px;max-width:620px;line-height:1.6}
-  @media(max-width:560px){body{padding:0 16px}.topbar{height:68px}.top-note{font-size:0}.top-note .status-dot{width:8px;height:8px}header{margin:55px 0 25px}header p{font-size:.93rem}.card{padding:18px;border-radius:18px}.row{gap:4px}input[type=url]{font-size:.88rem;padding-left:9px}#go{padding:0 15px;font-size:.85rem}.trust-row{gap:12px;justify-content:space-between;font-size:.69rem}.chip{font-size:.74rem;padding:6px 9px}}
-  @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
+:root{color-scheme:dark;--bg:#090b12;--panel:rgba(20,24,37,.78);--panel2:#151a29;--text:#f7f8fc;--muted:#9ca6ba;--line:rgba(255,255,255,.10);--red:#ff355d;--red2:#ff6548;--purple:#8b5cf6;--cyan:#42d9cf;--good:#3ddc97;--shadow:0 24px 80px rgba(0,0,0,.34)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 12% 0%,rgba(139,92,246,.18),transparent 34%),radial-gradient(ellipse at 88% 8%,rgba(255,53,93,.13),transparent 30%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:0 20px;overflow-x:hidden}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.18;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:38px 38px;mask-image:linear-gradient(to bottom,black,transparent 80%)}
+.topbar{width:100%;max-width:1120px;margin:0 auto;min-height:76px;display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid var(--line);position:relative;z-index:1}.brand{display:flex;align-items:center;gap:11px;color:var(--text);text-decoration:none;font-weight:850;letter-spacing:-.04em;font-size:1.18rem}.brand-icon{width:40px;height:40px;display:grid;place-items:center;border-radius:13px;background:linear-gradient(135deg,var(--red),var(--red2));box-shadow:0 8px 24px rgba(255,53,93,.26);font-size:1.15rem}.brand em{font-style:normal;color:#ff536c}.top-pill{font-size:.78rem;color:#d6d9e4;border:1px solid var(--line);background:rgba(255,255,255,.035);padding:7px 11px;border-radius:999px;white-space:nowrap}.top-pill span{color:var(--good);margin-right:6px}
+main{width:100%;max-width:1000px;margin:0 auto;position:relative;z-index:1}.hero{text-align:center;padding:66px 0 30px}.eyebrow{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,83,108,.26);background:rgba(255,53,93,.08);color:#ff8ca0;border-radius:999px;padding:6px 12px;font-size:.76rem;font-weight:750;letter-spacing:.09em;text-transform:uppercase}.eyebrow i{width:7px;height:7px;background:var(--red);border-radius:50%;box-shadow:0 0 12px var(--red)}h1{font-size:clamp(2.5rem,7vw,5rem);line-height:1.02;letter-spacing:-.075em;margin:20px 0 16px;font-weight:900}h1 .gradient{background:linear-gradient(100deg,#fff 15%,#ff9eae 48%,#a995ff 85%);-webkit-background-clip:text;background-clip:text;color:transparent}.hero p{max-width:580px;margin:0 auto;color:var(--muted);font-size:clamp(.98rem,2vw,1.12rem)}
+.workspace{max-width:820px;margin:0 auto}.card{background:linear-gradient(145deg,rgba(24,29,45,.9),rgba(14,17,28,.88));border:1px solid rgba(255,255,255,.12);border-radius:25px;padding:clamp(18px,4vw,32px);box-shadow:var(--shadow);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);position:relative;overflow:hidden}.card:before{content:"";position:absolute;top:0;left:10%;right:10%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent)}.form-label{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px;font-size:.92rem;font-weight:750}.form-label small{font-size:.78rem;color:var(--muted);font-weight:500}.row{display:flex;gap:10px;padding:7px;background:rgba(5,7,13,.58);border:1px solid rgba(255,255,255,.13);border-radius:16px;transition:border-color .2s,box-shadow .2s}.row:focus-within{border-color:rgba(139,92,246,.8);box-shadow:0 0 0 4px rgba(139,92,246,.11)}input[type=url]{flex:1;min-width:0;padding:13px 12px;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:.97rem}input::placeholder{color:#737e94}button{font:inherit;cursor:pointer;border:0;transition:transform .18s,filter .18s,opacity .18s}button:hover,.actions a:hover{filter:brightness(1.08);transform:translateY(-1px)}button:active,.actions a:active{transform:translateY(0)}button:disabled{opacity:.58;cursor:wait;transform:none}.primary{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:9px;padding:13px 20px;border-radius:11px;background:linear-gradient(115deg,var(--red),var(--red2));color:white;font-weight:800;box-shadow:0 7px 22px rgba(255,53,93,.2)}.platforms{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:19px}.chip{font-size:.78rem;color:#c2c9d8;border:1px solid var(--line);background:rgba(255,255,255,.035);padding:6px 10px;border-radius:999px}.chip.featured{border-color:rgba(255,53,93,.22);color:#ffb1be;background:rgba(255,53,93,.06)}.microcopy{display:flex;justify-content:center;align-items:center;gap:7px;margin-top:18px;color:#8490a6;font-size:.78rem;text-align:center}.microcopy svg{flex-shrink:0}
+#error{display:none;color:#ff9aa9;background:rgba(255,53,93,.09);border:1px solid rgba(255,53,93,.22);padding:12px 14px;border-radius:12px;margin-top:16px;overflow-wrap:anywhere}#result{display:none;margin-top:22px;padding-top:22px;border-top:1px solid var(--line);animation:rise .35s ease}#thumb{width:100%;max-height:390px;object-fit:cover;border-radius:16px;display:block;background:#0a0d15;border:1px solid var(--line)}#title{font-size:1.15rem;font-weight:800;letter-spacing:-.02em;margin:16px 0 4px;overflow-wrap:anywhere}#meta{color:var(--muted);font-size:.86rem;margin-bottom:17px}.result-label{font-size:.77rem;text-transform:uppercase;letter-spacing:.12em;color:#9ba6bb;font-weight:800;margin:18px 0 10px}.actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.actions a,.actions button{display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;text-decoration:none;padding:14px 12px;border-radius:13px;font-weight:800;color:#fff;font-size:.9rem;min-width:0}.video{background:linear-gradient(135deg,#ff355d,#e52148)}.audio{background:linear-gradient(135deg,#168f9c,#16b8ad)}.image{background:linear-gradient(135deg,#7c4dff,#a15cff)}#note{color:#9aa5ba;font-size:.8rem;margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.035)}
+.features{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin:22px auto 0;max-width:820px}.feature{padding:17px 16px;border:1px solid var(--line);background:rgba(255,255,255,.025);border-radius:17px}.feature-icon{font-size:1.12rem;margin-bottom:8px}.feature strong{display:block;font-size:.88rem;margin-bottom:4px}.feature p{margin:0;color:var(--muted);font-size:.78rem}.section-title{text-align:center;margin:46px 0 0;font-size:1.2rem;letter-spacing:-.03em}footer{position:relative;z-index:1;max-width:820px;margin:34px auto 26px;padding-top:20px;border-top:1px solid var(--line);color:#818ba0;font-size:.78rem;text-align:center}footer strong{color:#b6bfd0}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@media(max-width:620px){body{padding:0 13px}.topbar{min-height:65px}.brand{font-size:1.05rem}.brand-icon{width:36px;height:36px}.top-pill{font-size:.7rem;padding:6px 8px}.hero{padding:48px 0 25px}h1{letter-spacing:-.065em}.card{border-radius:20px}.row{flex-direction:column;padding:7px}.row input[type=url]{padding:11px 9px}.primary{width:100%;padding:13px}.form-label small{display:none}.actions{grid-template-columns:1fr}.actions a,.actions button{min-height:48px}.features{grid-template-columns:1fr;gap:9px}.feature{display:flex;align-items:center;gap:12px;padding:13px}.feature-icon{margin:0;font-size:1.35rem}.feature p{font-size:.76rem}.feature strong{margin-bottom:2px}.microcopy{align-items:flex-start}.platforms{gap:6px}.chip{font-size:.74rem}}@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
   <nav class="topbar" aria-label="Main navigation">
-    <a class="brand" href="/" aria-label="SaveAnyClip home"><span class="brand-mark" aria-hidden="true">↘</span><span>saveanyclip</span></a>
-    <div class="top-note"><span class="status-dot" aria-hidden="true"></span>Free online downloader</div>
+    <a class="brand" href="/" aria-label="SaveAnyClip home"><span class="brand-icon">▶</span><span>SaveAny<span style="color:#ff536c">Clip</span></span></a>
+    <div class="top-pill"><span>●</span> Simple · Fast · Online</div>
   </nav>
-  <header>
-    <div class="eyebrow"><span aria-hidden="true">✦</span> Your media, made simple</div>
-    <h1>Save what you <span>love.</span></h1>
-    <p>Videos, audio, and images from your favorite places on the web.<br>One link is all it takes.</p>
-  </header>
-
   <main>
-    <div class="card">
-      <label class="form-label" for="url">Paste a link to get started</label>
-      <form id="form" class="row">
-        <input id="url" type="url" placeholder="https://…" aria-label="Video or post URL" required>
-        <button id="go" type="submit">Get media <span aria-hidden="true">→</span></button>
-      </form>
-      <div class="platform-heading">Works with 1,000+ sites</div>
-      <div class="platforms">
-        <span class="chip">YouTube</span><span class="chip">Instagram</span>
-        <span class="chip">Facebook</span><span class="chip">TikTok</span>
-        <span class="chip">X / Twitter</span><span class="chip">Reddit</span>
-        <span class="chip">Vimeo</span><span class="chip">+ 1000 more</span>
-      </div>
-      <div class="trust-row">
-        <span class="trust-item"><span class="trust-icon" aria-hidden="true">✓</span> No sign-up needed</span>
-        <span class="trust-item"><span class="trust-icon" aria-hidden="true">✓</span> Fast and simple</span>
-        <span class="trust-item"><span class="trust-icon" aria-hidden="true">✓</span> Private by design</span>
-      </div>
-      <div id="error"></div>
-
-      <div id="result">
-        <img id="thumb" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="">
-        <div id="title"></div>
-        <div id="meta"></div>
-        <div class="actions">
-          <a id="dlVideo" class="video" href="#">Download Video (MP4)</a>
-          <a id="dlAudio" class="audio" href="#">Download Audio (MP3)</a>
-          <button id="dlImage" class="image" type="button">Download Image</button>
+    <section class="hero">
+      <div class="eyebrow"><i></i> Your all-in-one media tool</div>
+      <h1>Save the clips.<br><span class="gradient">Keep the moments.</span></h1>
+      <p>One link is all you need. Get your video, audio, or image with a clean, simple workflow.</p>
+    </section>
+    <section class="workspace" aria-label="Media downloader">
+      <div class="card">
+        <div class="form-label"><span>Paste your media link</span><small>URL supported</small></div>
+        <form id="form" class="row">
+          <input id="url" type="url" placeholder="https://… paste a video or post link" aria-label="Media URL" required>
+          <button id="go" class="primary" type="submit"><span>Fetch media</span><span aria-hidden="true">↗</span></button>
+        </form>
+        <div class="platforms" aria-label="Example supported platforms">
+          <span class="chip featured">▶ YouTube</span><span class="chip">◎ Instagram</span>
+          <span class="chip">f Facebook</span><span class="chip">♪ TikTok</span>
+          <span class="chip">𝕏 Twitter / X</span><span class="chip">Reddit</span><span class="chip">Vimeo</span><span class="chip">+ more</span>
         </div>
-        <div id="note">Video downloads can take up to a minute to start. Please wait and do not tap again.</div>
+        <div class="microcopy"><span aria-hidden="true">🔒</span> Use links to content you own or have permission to download.</div>
+        <div id="error" role="alert" aria-live="polite"></div>
+        <div id="result" aria-live="polite">
+          <img id="thumb" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Media thumbnail">
+          <div id="title"></div>
+          <div id="meta"></div>
+          <div class="result-label">Choose your download</div>
+          <div class="actions">
+            <a id="dlVideo" class="video" href="#">▶ Download video</a>
+            <a id="dlAudio" class="audio" href="#">♫ Download audio</a>
+            <button id="dlImage" class="image" type="button">▧ Download image</button>
+          </div>
+          <div id="note">Video downloads can take up to a minute to start. Please wait and do not tap again.</div>
+        </div>
       </div>
-    </div>
+    </section>
+    <section class="features" aria-label="Highlights">
+      <article class="feature"><div class="feature-icon">⚡</div><div><strong>Easy workflow</strong><p>Paste a link and fetch available media.</p></div></article>
+      <article class="feature"><div class="feature-icon">◈</div><div><strong>Flexible formats</strong><p>Choose video, audio, or image when available.</p></div></article>
+      <article class="feature"><div class="feature-icon">▣</div><div><strong>Made for mobile</strong><p>Responsive layout for phones, tablets, and desktop.</p></div></article>
+    </section>
   </main>
-
-  <footer>
-    Only download content you own or have permission to save. You are responsible for
-    following each platform's terms and copyright law.
-  </footer>
+  <footer><strong>SaveAnyClip</strong> · Only download content you own or have permission to save. Follow each platform’s terms and applicable copyright law.</footer>
 
 <script>
   const form = document.getElementById("form");
@@ -120,7 +94,7 @@
     errEl.style.display = "none";
     resultEl.style.display = "none";
     goBtn.disabled = true;
-    goBtn.textContent = "Loading...";
+    goBtn.innerHTML = "<span>Fetching…</span> <span aria-hidden="true">↻</span>";
 
     try {
       const url = urlEl.value.trim();
@@ -143,25 +117,21 @@
 
       const q = (type) =>
         `/api/download?type=${type}&url=${encodeURIComponent(url)}&title=${encodeURIComponent(current.title)}`;
-      const instagram = /(^|\.)instagram\.com$/i.test(new URL(url).hostname);
-      dlVideo.href = instagram
-        ? `/api/instagram-download?url=${encodeURIComponent(url)}&title=${encodeURIComponent(current.title)}`
-        : q("video");
+      dlVideo.href = q("video");
       dlAudio.href = q("audio");
-      dlVideo.textContent = instagram ? "Download Instagram Media" : "Download Video (MP4)";
 
       // image-only posts have no video or audio
       const imageOnly = !!data.imageOnly;
-      dlVideo.style.display = imageOnly && !instagram ? "none" : "";
-      dlAudio.style.display = imageOnly || instagram ? "none" : "";
-      noteEl.style.display = imageOnly || instagram ? "none" : "block";
+      dlVideo.style.display = imageOnly ? "none" : "";
+      dlAudio.style.display = imageOnly ? "none" : "";
+      noteEl.style.display = imageOnly ? "none" : "block";
 
       resultEl.style.display = "block";
     } catch (err) {
       showError(err.message);
     } finally {
       goBtn.disabled = false;
-      goBtn.textContent = "Fetch";
+      goBtn.innerHTML = "<span>Fetch media</span><span aria-hidden="true">↗</span>";
     }
   });
 
