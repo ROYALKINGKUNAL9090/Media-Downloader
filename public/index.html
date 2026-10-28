@@ -145,14 +145,18 @@
 
       const q = (type) =>
         `/api/download?type=${type}&url=${encodeURIComponent(url)}&title=${encodeURIComponent(current.title)}`;
-      dlVideo.href = q("video");
+      const instagram = /(^|\.)instagram\.com$/i.test(new URL(url).hostname);
+      dlVideo.href = instagram
+        ? `/api/instagram-download?url=${encodeURIComponent(url)}&title=${encodeURIComponent(current.title)}`
+        : q("video");
       dlAudio.href = q("audio");
+      dlVideo.textContent = instagram ? "Download Instagram Media" : "Download Video (MP4)";
 
       // image-only posts have no video or audio
       const imageOnly = !!data.imageOnly;
-      dlVideo.style.display = imageOnly ? "none" : "";
-      dlAudio.style.display = imageOnly ? "none" : "";
-      noteEl.style.display = imageOnly ? "none" : "block";
+      dlVideo.style.display = imageOnly && !instagram ? "none" : "";
+      dlAudio.style.display = imageOnly || instagram ? "none" : "";
+      noteEl.style.display = imageOnly || instagram ? "none" : "block";
 
       resultEl.style.display = "block";
     } catch (err) {

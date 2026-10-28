@@ -7,6 +7,7 @@ A simple website to download video (MP4) or audio (MP3) from social media links,
 - Node.js 18+
 - `yt-dlp` installed and on your PATH
 - `ffmpeg` installed (needed for MP3 conversion)
+- `gallery-dl` installed for Instagram downloads (Docker installs it automatically)
 
 Install them:
 
@@ -42,6 +43,7 @@ public/index.html  Frontend page
 
 This needs a real server (VPS, Railway, Render, etc.), not a static host, because it runs yt-dlp and ffmpeg.
 The Docker image switches yt-dlp to the latest `master` channel build during image creation. Rebuild the image to pick up newer builds. For a manually installed yt-dlp binary, use `yt-dlp --update-to master` to switch to and update to the latest master build.
+For a native installation, install gallery-dl with `pipx install gallery-dl` so the Instagram download endpoint is available.
 
 ## Notes
 
