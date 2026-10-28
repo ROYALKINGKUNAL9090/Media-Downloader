@@ -56,18 +56,27 @@ function validateUrl(raw) {
   return u.toString();
 }
 
-// very simple in-memory rate limiter (per IP, per minute)
+// In-memory rate limiter, scoped independently to each IP and endpoint.
 const hits = new Map();
 function rateLimit(max) {
   return (req, res, next) => {
     const now = Date.now();
-    const key = req.ip || "unknown";
+    const key = `${req.ip || "unknown"}:${req.method}:${req.path}`;
     const list = (hits.get(key) || []).filter((t) => now - t < 60_000);
     if (list.length >= max) {
+      res.set("Retry-After", String(Math.max(1, Math.ceil((60_000 - (now - list[0])) / 1000))));
       return res.status(429).json({ error: "Too many requests. Try again in a minute." });
     }
     list.push(now);
     hits.set(key, list);
+
+    // Drop expired buckets periodically so this map stays bounded over time.
+    if (hits.size > 1000) {
+      for (const [bucket, timestamps] of hits) {
+        if (!timestamps.some((timestamp) => now - timestamp < 60_000)) hits.delete(bucket);
+      }
+    }
+
     next();
   };
 }
@@ -114,9 +123,6 @@ function getYtDlpArgs(extraArgs = []) {
   } else if (browser) {
     options.push("--cookies-from-browser", browser);
   }
-
-  // This often helps with YouTube anti-bot restrictions
-  options.push("--extractor-args", "youtube:player_client=android");
 
   // yt-dlp stops parsing options after `--`, so insert options before the URL.
   const separator = args.indexOf("--");
@@ -513,8 +519,8 @@ app.get("/api/download", rateLimit(10), (req, res) => {
   } else {
     args = getYtDlpArgs([
       "--no-playlist",
-      "-f", "bv*+ba/b",
-      "-S", "res:1080,vcodec:h264,acodec:aac",
+      "-f", "bestvideo*[height<=1080]+bestaudio/best[height<=1080]/best",
+      "-S", "vcodec:h264,res:1080,acodec:aac",
       "--merge-output-format", "mp4",
       "--print", "after_move:filepath",
       "-o", outTemplate, "--", url,
